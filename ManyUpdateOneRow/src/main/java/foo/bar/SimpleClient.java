@@ -5,6 +5,8 @@ import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Session;
 
+import java.util.Date;
+
 /**
  * Описание
  *
@@ -43,7 +45,10 @@ public class SimpleClient {
   }
 
   public void close() {
+
+    System.out.println(new Date());
     cluster.close();
+    System.out.println(new Date());
   }
 
 }
