@@ -46,29 +46,24 @@ public class UpdateBalance {
   ) {
     BoundStatement boundStatement;
     ResultSet results;
+    Row row;
     boundStatement = new BoundStatement(insertPreparedStatement);
     results = session.execute(
       boundStatement.bind(balance, eventDate, client)
     );
-    Row row;
     row = results.one();
-
-    logger.debug(String.valueOf(row.getBool("[applied]")));
-   // Весь код не правилен
-    // Нет не получилось обновить строку.
-    if (!row.getBool("[applied]")) {
-      // Побежал цикл.
-      // Необходимо проверять на applied и только потом на дату!!!
-      while (eventDate.compareTo(row.getDate("eventtime")) > 0) {
-        boundStatement = new BoundStatement(updatePreparedStatement);
-        results = session.execute(
-          boundStatement.bind(
-            balance, eventDate, client, eventDate
-          )
-        );
-        row = results.one();
-      }
-
+    logger.debug("Вставка {}",row);
+    // Как то так!
+    while(!row.getBool("[applied]") && eventDate.compareTo(row.getDate("eventtime")) > 0){
+      boundStatement = new BoundStatement(updatePreparedStatement);
+      results = session.execute(
+        boundStatement.bind(
+          balance, eventDate, client, row.getDate("eventtime")
+        )
+      );
+      row = results.one();
+      logger.debug("Обновление {}",row);
     }
+
   }
 }

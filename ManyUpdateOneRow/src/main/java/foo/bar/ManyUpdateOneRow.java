@@ -2,6 +2,7 @@ package foo.bar;
 
 import com.datastax.driver.core.*;
 
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -126,5 +127,17 @@ IF NOT EXISTS
 
     client.close();
 
+    Calendar now = Calendar.getInstance();
+    System.out.println("Current time : " + now.get(Calendar.HOUR_OF_DAY) + ":"
+                         + now.get(Calendar.MINUTE) + ":" + now.get(Calendar.SECOND));
+
+    now.add(Calendar.SECOND, 100);
+    System.out.println("New time after adding 100 seconds : " + now.get(Calendar.HOUR_OF_DAY) + ":"
+                         + now.get(Calendar.MINUTE) + ":" + now.get(Calendar.SECOND));
+
   }
+
+
+
+
 }
