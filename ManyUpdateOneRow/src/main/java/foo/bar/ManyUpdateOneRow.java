@@ -2,9 +2,9 @@ package foo.bar;
 
 import com.datastax.driver.core.*;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Описание
@@ -20,124 +20,89 @@ public class ManyUpdateOneRow {
     client.connect(args[0]);
     client.printMetadata();
     Session session = client.getSession();
+    Long clnt = Long.valueOf(1000000L);
 
-    ResultSet results;
 
-    results = session.execute(
-      "select clnt_id, bal, eventTime \n" +
-        "from test_data_mart.balances\n" +
-        "where clnt_id = 8;"
-    );
+    UpdateBalance updateBalance = new UpdateBalance(session, 10);
 
+
+    int numberThread = 10;
+    CountDownLatch countDownLatch = new CountDownLatch(numberThread);
+
+    List<ProcessUpdateBalance> listProcessUpdateBalance = new ArrayList<>();
+    for (int i = 0; i < numberThread; i++) {
+      listProcessUpdateBalance.add(new ProcessUpdateBalance(3, countDownLatch, updateBalance, clnt));
+    }
+
+
+    System.out.println("Обновляем баланс");
+
+    for (int i = 0; i < numberThread; i++) {
+      System.out.println("Запускаем нить:" + i);
+      listProcessUpdateBalance.get(i).start();
+    }
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      System.err.println("Ошибка при ожидании завершения нитей: " + e.getMessage());
+    }
+
+    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+    System.out.println("Закончили");
+    System.out.println("Последние значения балансов для нити:");
     System.out.println(
       String.format(
-        "%-30s\t%-20s\t%-20s\n%s", "clnt_id", "bal", "eventTime",
-        "-------------------------------+-----------------------+--------------------"
+        "%-36s\t%-26s\t%-20s\t%-21s\t%-26s\n%s",
+        "UUID",
+        "Дата",
+        "Баланс",
+        "WriteTimeoutException",
+        "Не удалось обновить баланс",
+        "------------------------------------\t--------------------------\t--------------------\t---------------------\t--------------------------"
+      )
+    );
+
+    Collections.sort(listProcessUpdateBalance);
+    for (ProcessUpdateBalance item : listProcessUpdateBalance) {
+      System.out.println(
+        String.format(
+          "%-36s\t%-26s\t%-20s\t%-21s\t%-26s",
+          item.getThreadUUID(),
+          simpleDateFormat.format(item.getLastDate().getTime()),
+          item.getLastBal(),
+          item.getNumberOfWriteTimeoutException(),
+          item.getNumberOfErrorUpdateBalance()
+        )
+      );
+    }
+
+    System.out.println(String.format("\nТекущий баланс в базе."));
+
+    ResultSet results;
+    results = session.execute(
+      String.format(
+        "select clnt_id, bal, eventTime \n" +
+          "from test_data_mart.balances\n" +
+          "where clnt_id = %s;", clnt
+      )
+    );
+    System.out.println(
+      String.format(
+        "%-26s\t%-20s\t%-20s\n%s", "eventTime", "bal", "clnt",
+        "--------------------------\t--------------------\t--------------------"
       )
     );
     for (Row row : results) {
       System.out.println(
         String.format(
-          "%-30s\t%-20s\t%-20s", row.getLong("clnt_id"), row.getDecimal("bal"), row.getDate("eventTime")
-          //row.getString("clnt_id"),
-          //row.getString("bal"),
-          // row.getString("eventTime")
+          "%-26s\t%-20s\t%-20s",simpleDateFormat.format(row.getDate("eventTime")), row.getDecimal("bal"), row.getLong("clnt_id")
         )
       );
     }
-
-
-    System.out.println("!");
-
-    results = session.execute(
-      "update test_data_mart.balances \n" +
-        "set bal = 12, \n" +
-        "eventTime = '2014-08-08 12:12:12' \n" +
-        "where clnt_id = 14;"
-    );
-    for (Row row : results) {
-      System.out.println(row );
-    }
-    System.out.println("!!");
-
-    results = session.execute(
-      "update test_data_mart.balances \n" +
-        "set bal = 12, \n" +
-        "eventTime = '2014-08-08 12:12:12' \n" +
-        "where clnt_id = 14" +
-        "if eventTime = '2014-08-08 12:12:14';"
-    );
-    for (Row row : results) {
-      System.out.println(row.getColumnDefinitions() );
-      System.out.println(row);
-    }
-    System.out.println("!!!");
-
-    //Отрабатываем бинды
-    PreparedStatement statement = session.prepare(
-      "update test_data_mart.balances \n" +
-        "set bal = ?, \n" +
-        "eventTime = ? \n" +
-        "where clnt_id = ?" +
-        "if eventTime = ?;"
-    );
-    BoundStatement boundStatement;
-
-    boundStatement = new BoundStatement(statement);
-    results = session.execute(boundStatement.bind(java.math.BigDecimal.valueOf(12.9),new Date(),Long.valueOf(14L),new Date())
-    );
-    for (Row row : results) {
-      System.out.println(row.getColumnDefinitions() );
-      System.out.println(row);
-    }
-    System.out.println("!!!!");
-
-    boundStatement = new BoundStatement(statement);
-    results = session.execute(boundStatement.bind(java.math.BigDecimal.valueOf(12.9),new Date(),Long.valueOf(17L),null)
-    );
-    for (Row row : results) {
-      System.out.println(row.getColumnDefinitions() );
-      System.out.println(row);
-    }
-
-    statement = session.prepare(
-      "insert into test_data_mart.balances(bal, eventTime, clnt_id) \n" +
-        "values(?,?, ?)\n" +
-        "IF NOT EXISTS;\n"
-    );
-    boundStatement = new BoundStatement(statement);
-    results = session.execute(boundStatement.bind(java.math.BigDecimal.valueOf(1111.78),new Date(),Long.valueOf(-999L))
-    );
-    List<Row> tt = results.all();
-    System.out.println(">>" + tt.size());
-    for (Row row : tt) {
-      System.out.println(row.getColumnDefinitions() );
-      System.out.println(row);
-    }
-    /*
-    insert into test_data_mart.balances(bal, eventTime, clnt_id)
-values(12.88,'2012-08-25 12:10', 22)
-IF NOT EXISTS
-     */
-    System.out.println("!!!!!");
-
-
-    UpdateBalance updateBalance = new UpdateBalance(session);
-    updateBalance.updateBalance(Long.valueOf(-999L), java.math.BigDecimal.valueOf(1111.78), new Date());
-
     client.close();
 
-    Calendar now = Calendar.getInstance();
-    System.out.println("Current time : " + now.get(Calendar.HOUR_OF_DAY) + ":"
-                         + now.get(Calendar.MINUTE) + ":" + now.get(Calendar.SECOND));
-
-    now.add(Calendar.SECOND, 100);
-    System.out.println("New time after adding 100 seconds : " + now.get(Calendar.HOUR_OF_DAY) + ":"
-                         + now.get(Calendar.MINUTE) + ":" + now.get(Calendar.SECOND));
-
   }
-
-
 
 
 }
