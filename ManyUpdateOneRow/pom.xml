@@ -14,6 +14,11 @@
   <packaging>jar</packaging>
 
   <dependencies>
+    <!-- Разбор параметров коммандной строки -->
+    <dependency>
+      <groupId>com.beust</groupId>
+      <artifactId>jcommander</artifactId>
+    </dependency>
 
     <!-- Cassandra -->
     <dependency>
@@ -45,6 +50,23 @@
 
   </dependencies>
 
-
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven-jar-plugin.version}</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <mainClass>foo.bar.ManyUpdateOneRow</mainClass>
+              <classpathPrefix>dependency-jars/</classpathPrefix>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

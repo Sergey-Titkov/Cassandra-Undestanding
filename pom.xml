@@ -20,6 +20,11 @@
     <!-- Сбока -->
     <maven-compiler-plugin.version>2.5.1</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>2.17</maven-surefire-plugin.version>
+    <onejar-maven-plugin.version>1.4.4</onejar-maven-plugin.version>
+    <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
+
+    <!-- Разбор параметров коммандной строки -->
+    <com.beust.jcommander.version>1.30</com.beust.jcommander.version>
 
   </properties>
 
@@ -30,6 +35,12 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- Разбор параметров коммандной строки -->
+      <dependency>
+        <groupId>com.beust</groupId>
+        <artifactId>jcommander</artifactId>
+        <version>${com.beust.jcommander.version}</version>
+      </dependency>
 
       <!-- Apache Cassandra -->
       <dependency>
@@ -68,7 +79,7 @@
   </dependencyManagement>
 
   <build>
-    <finalName>${artifactId}</finalName>
+    <finalName>${project.artifactId}</finalName>
     <plugins>
 
       <plugin>
@@ -91,7 +102,29 @@
         </configuration>
       </plugin>
 
+      <!-- If you wanted to bundle all this in one jar. -->
+      <plugin>
+        <groupId>org.dstovall</groupId>
+        <artifactId>onejar-maven-plugin</artifactId>
+        <version>${onejar-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>one-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
     </plugins>
   </build>
+
+  <!-- Required only if you are usng onejar plugin. -->
+  <pluginRepositories>
+    <pluginRepository>
+      <id>onejar-maven-plugin.googlecode.com</id>
+      <url>http://onejar-maven-plugin.googlecode.com/svn/mavenrepo</url>
+    </pluginRepository>
+  </pluginRepositories>
 
 </project>

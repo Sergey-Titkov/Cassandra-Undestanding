@@ -10,7 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Описание
+ * Нить для рандомного обновления баланса.
  *
  * @author Sergey.Titkov
  * @version 001.00
@@ -20,6 +20,7 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
   // Наш любимый логер.
   private Logger logger = LoggerFactory.getLogger(getClass());
 
+  // Что обновляет баланс
   private UpdateBalance updateBalance;
 
   // Время работы нити в секундах
@@ -33,11 +34,15 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
 
   private Long client;
 
+  // С календарем удобнее работать, чем с Date
+  // Полследние значения даты обновления баланса и значения баланса, нужно для контроля.
   private Calendar lastDate = Calendar.getInstance();
   private java.math.BigDecimal lastBal;
 
+  // Метрики работы.
   private int numberOfWriteTimeoutException = 0;
   private int numberOfErrorUpdateBalance = 0;
+  private long numberUpdates = 0;
 
   /**
    * Основной конструктор
@@ -89,6 +94,8 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
           lastDate = eventTime;
           lastBal =  bal;
         }
+        // Сколько успели сделать.
+        numberUpdates++;
       }
 
     } finally {
@@ -115,6 +122,10 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
 
   public int getNumberOfErrorUpdateBalance() {
     return numberOfErrorUpdateBalance;
+  }
+
+  public long getNumberUpdates() {
+    return numberUpdates;
   }
 
   /**
