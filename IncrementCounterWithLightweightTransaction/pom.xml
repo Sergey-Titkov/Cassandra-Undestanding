@@ -10,10 +10,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>IncrementWithoutLightweightTransaction</artifactId>
-  <name>Многопоточно обновляем счетчики, без использования легковесных тразакций.</name>
+  <name>Многопоточное обновление счетчиков, с использованием легковесных тразакций.</name>
   <description>
-    Многопоточно обновляем счетчики, без использования легковесных тразакций.
-    Необходимо проверить, не затрутся ли данные при частом обновлении.
+    Многопоточное обновление счетчиков, с использованием легковесных тразакций.
+    Не используем счетчики.
+    Необходимо проверить, насколько это медленно.
   </description>
 
   <dependencies>
@@ -63,7 +64,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>foo.bar.ManyUpdateOneRow</mainClass>
+              <mainClass>foo.bar.IncrementCountersWithLWTransaction</mainClass>
               <classpathPrefix>dependency-jars/</classpathPrefix>
             </manifest>
           </archive>

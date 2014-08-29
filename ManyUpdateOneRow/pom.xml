@@ -60,7 +60,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>foo.bar.ManyUpdateOneRow</mainClass>
+              <mainClass>foo.bar.IncrementCountersWithLWTransaction</mainClass>
               <classpathPrefix>dependency-jars/</classpathPrefix>
             </manifest>
           </archive>

@@ -5,7 +5,7 @@ import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Date;
+import java.util.UUID;
 
 /**
  * Класс предназначен для обновления баланса клиента.
@@ -16,7 +16,7 @@ import java.util.Date;
  * @version 001.00
  * @since 001.00
  */
-public class UpdateBalance {
+public class UpdateCounterWithLWTransaction {
   private Logger logger = LoggerFactory.getLogger(getClass());
 
   private Session session;
@@ -27,16 +27,20 @@ public class UpdateBalance {
 
   // CSQL запросы абсолютно одинаковы для всех объектов.
   private static String insertCQL =
-    "insert into test_data_mart.balances(bal, eventTime, clnt_id) \n" +
-      "values(?,?, ?)\n" +
+    "insert into test_data_mart.counters(vol_01, vol_02, vol_03, uuid, main_id) \n" +
+      "values(?, ?, ?, ?, ?)\n" +
       "IF NOT EXISTS;\n";
 
   private static String updateCQL =
-    "update test_data_mart.balances \n" +
-      "set bal = ?, \n" +
-      "eventTime = ? \n" +
-      "where clnt_id = ?" +
-      "if eventTime = ?;";
+    "update test_data_mart.counters \n" +
+      "set " +
+      "  vol_01 = ?, \n" +
+      "  vol_02 = ?, \n" +
+      "  vol_03 = ?, \n" +
+      "  uuid   = ? \n" +
+      "where main_id = ?" +
+      "if uuid = ? and vol_01 = ? and vol_02 = ? and vol_03 = ? ;";
+
 
   /**
    * Сколько ошибок WriteTimeoutException может возникнуть при попытке изменить запись.
@@ -49,7 +53,7 @@ public class UpdateBalance {
    * @param session       Сессия для подключения к кластеру Кассандры.
    * @param maxErrorOccur Сколько ошибок WriteTimeoutException может возникнуть при попытке изменить запись.
    */
-  public UpdateBalance(Session session, int maxErrorOccur) {
+  public UpdateCounterWithLWTransaction(Session session, int maxErrorOccur) {
     this.session = session;
     insertPreparedStatement = this.session.prepare(insertCQL);
     updatePreparedStatement = this.session.prepare(updateCQL);
@@ -65,15 +69,17 @@ public class UpdateBalance {
    * Если попытка будет не успешная, то она будет повторена. Попытки будут повторяться до тех пор пока значение в базе не
    * станет больше чем  eventDate.
    *
-   * @param client    Клиент
-   * @param balance   Баланс
-   * @param eventDate Дата события.
+   * @param client Клиент
+   * @param vol_01 Баланс
+   * @param vol_02 Дата события.
    * @return Количество оставшихся попыток обновления. Если значение ==0, это означает, что во время выполнения
    *         обновления баланса возникло  getMaxErrorOccur ошибок WriteTimeoutException.
    */
-  public int updateBalance(
-    Long client, java.math.BigDecimal balance, Date eventDate
+  public int updateCounters(
+    Long client, java.math.BigDecimal vol_01, java.math.BigDecimal vol_02, java.math.BigDecimal vol_03
   ) {
+    UUID uuid = UUID.randomUUID();
+
     int errorOccur = maxErrorOccur;
     while (errorOccur > 0) {
       try {
@@ -82,16 +88,24 @@ public class UpdateBalance {
         Row row;
         boundStatement = new BoundStatement(insertPreparedStatement);
         results = session.execute(
-          boundStatement.bind(balance, eventDate, client)
+          boundStatement.bind(vol_01, vol_02, vol_03, uuid, client)
         );
         row = results.one();
         logger.debug("Вставка {}", row);
         // Как то так!
-        while (!row.getBool("[applied]") && eventDate.compareTo(row.getDate("eventtime")) > 0) {
+        while (!row.getBool("[applied]")) {
           boundStatement = new BoundStatement(updatePreparedStatement);
           results = session.execute(
             boundStatement.bind(
-              balance, eventDate, client, row.getDate("eventtime")
+              vol_01.add(row.getDecimal("vol_01")),
+              vol_02.add(row.getDecimal("vol_02")),
+              vol_03.add(row.getDecimal("vol_03")),
+              uuid,
+              client,
+              row.getUUID("uuid"),
+              row.getDecimal("vol_01"),
+              row.getDecimal("vol_02"),
+              row.getDecimal("vol_03")
             )
           );
           row = results.one();
