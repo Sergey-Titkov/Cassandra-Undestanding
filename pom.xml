@@ -31,7 +31,8 @@
   <modules>
     <module>ManyUpdateOneRow</module>
     <module>Common</module>
-    <module>IncrementWithoutLightweightTransaction</module>
+    <module>IncrementCounterWithLightweightTransaction</module>
+    <module>OnlyInsertAndAggregate</module>
   </modules>
 
   <dependencyManagement>
@@ -103,7 +104,7 @@
         </configuration>
       </plugin>
 
-      <!-- If you wanted to bundle all this in one jar. -->
+      <!-- Собираем все в один jar. -->
       <plugin>
         <groupId>org.dstovall</groupId>
         <artifactId>onejar-maven-plugin</artifactId>

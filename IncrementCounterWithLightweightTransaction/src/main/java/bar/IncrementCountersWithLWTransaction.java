@@ -71,6 +71,13 @@ public class IncrementCountersWithLWTransaction {
         )
       );
     }
+    // Удалям данные, пока обтработка в рамках одного приложения.
+    ResultSet results;
+    results = session.execute(
+      String.format(
+        "delete from test_data_mart.counters where main_id = %s;", clnt
+      )
+    );
 
     for (int i = 0; i < numberThread; i++) {
       System.out.println("Запускаем нить:" + i);
@@ -156,7 +163,6 @@ public class IncrementCountersWithLWTransaction {
 
     System.out.println(String.format("\nТекущие значения счетчиков в базе."));
 
-    ResultSet results;
     results = session.execute(
       String.format(
         "select * \n" +
