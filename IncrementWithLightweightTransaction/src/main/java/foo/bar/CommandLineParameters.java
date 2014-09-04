@@ -1,4 +1,4 @@
-package bar;
+package foo.bar;
 
 import com.beust.jcommander.Parameter;
 

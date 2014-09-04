@@ -1,6 +1,5 @@
-package bar;
+package foo.bar;
 
-import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

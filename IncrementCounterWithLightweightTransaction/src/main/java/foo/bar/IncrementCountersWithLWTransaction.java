@@ -1,4 +1,4 @@
-package bar;
+package foo.bar;
 
 import com.beust.jcommander.JCommander;
 import com.datastax.driver.core.ResultSet;
@@ -73,12 +73,13 @@ public class IncrementCountersWithLWTransaction {
     }
     // Удалям данные, пока обтработка в рамках одного приложения.
     ResultSet results;
+    /*
     results = session.execute(
       String.format(
         "delete from test_data_mart.counters where main_id = %s;", clnt
       )
     );
-
+    */
     for (int i = 0; i < numberThread; i++) {
       System.out.println("Запускаем нить:" + i);
       listProcessUpdateCounters.get(i).start();

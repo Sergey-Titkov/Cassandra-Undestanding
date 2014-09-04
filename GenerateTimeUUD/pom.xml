@@ -9,13 +9,9 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>IncrementCounterWithLightweightTransaction</artifactId>
-  <name>Многопоточное обновление счетчиков, с использованием легковесных тразакций.</name>
-  <description>
-    Многопоточное обновление счетчиков, с использованием легковесных тразакций.
-    Не используем счетчики.
-    Необходимо проверить, насколько это медленно.
-  </description>
+  <artifactId>GenerateTimeUUD</artifactId>
+
+  <packaging>jar</packaging>
 
   <dependencies>
     <!-- Разбор параметров коммандной строки -->
@@ -53,24 +49,5 @@
     </dependency>
 
   </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>${maven-jar-plugin.version}</version>
-        <configuration>
-          <archive>
-            <manifest>
-              <addClasspath>true</addClasspath>
-              <mainClass>foo.foo.foo.foo.bar.IncrementCountersWithLWTransaction</mainClass>
-              <classpathPrefix>dependency-jars/</classpathPrefix>
-            </manifest>
-          </archive>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 
 </project>

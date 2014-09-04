@@ -1,4 +1,4 @@
-package bar;
+package foo.bar;
 
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;

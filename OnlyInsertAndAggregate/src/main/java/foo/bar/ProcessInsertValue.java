@@ -1,4 +1,4 @@
-package bar;
+package foo.bar;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,18 +10,18 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Нить для рандомного обновления баланса.
+ * Описание
  *
  * @author Sergey.Titkov
  * @version 001.00
  * @since 001.00
  */
-public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUpdateBalance>{
+public class ProcessInsertValue extends Thread implements Comparable<ProcessInsertValue> {
   // Наш любимый логер.
   private Logger logger = LoggerFactory.getLogger(getClass());
 
   // Что обновляет баланс
-  private UpdateBalance updateBalance;
+  private InsertValue insertValue;
 
   // Время работы нити в секундах
   private int countDownTime;
@@ -44,13 +44,17 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
   private int numberOfErrorUpdateBalance = 0;
   private long numberUpdates = 0;
 
+  private long incrementVol01 = 0;
+  private long incrementVol02 = 0;
+  private long incrementVol03 = 0;
+
   /**
    * Основной конструктор
    */
-  public ProcessUpdateBalance(int workTime, CountDownLatch endWorkCDL, UpdateBalance updateBalance, Long client) {
+  public ProcessInsertValue(int workTime, CountDownLatch endWorkCDL, InsertValue insertValue, Long client) {
     this.countDownTime = workTime;
     this.endWorkCDL = endWorkCDL;
-    this.updateBalance = updateBalance;
+    this.insertValue = insertValue;
     this.client = client;
   }
 
@@ -70,30 +74,31 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
       // Обновляем баланс.
       while (dateEnd.compareTo(Calendar.getInstance()) > 0) {
 
-        // Рандомное значение наскольку надо сдвинуть дату от текущей.
-        int randomMillisecond = rand.nextInt(1000000);
-        // Будем прибавлять или удалять
-        boolean isPositive = rand.nextBoolean();
-        Calendar eventTime = Calendar.getInstance();
-        eventTime.add(Calendar.MILLISECOND, isPositive ? randomMillisecond:-1*randomMillisecond);
-
-        // Рандомный баланс
-        bal = BigDecimal.valueOf(rand.nextDouble());
+        // Рандомные значения счетчиков.
+        long vol01 = rand.nextInt(10);
+        long vol02 = rand.nextInt(100);
+        long vol03 = rand.nextInt(50);
 
         // Обновляем
-        int numberOfChance = updateBalance.updateBalance(this.client, bal, eventTime.getTime());
-        numberOfWriteTimeoutException = numberOfWriteTimeoutException + (updateBalance.getMaxErrorOccur() - numberOfChance);
+        int numberOfChance = insertValue.updateBalance(
+          client,
+          vol01,
+          vol02,
+          vol03
+        );
+
+        numberOfWriteTimeoutException = numberOfWriteTimeoutException + (insertValue
+          .getMaxErrorOccur() - numberOfChance);
 
         // Увеличиваем счетчик в том случае если совсем не удалось обновить баланс.
-        if (numberOfChance==0){
+        if (numberOfChance == 0) {
           numberOfErrorUpdateBalance++;
         }
 
-        // Протоколируем факт обновления.
-        if (eventTime.compareTo(lastDate)>0){
-          lastDate = eventTime;
-          lastBal =  bal;
-        }
+        incrementVol01 += vol01;
+        incrementVol02 += vol02;
+        incrementVol03 += vol03;
+
         // Сколько успели сделать.
         numberUpdates++;
       }
@@ -166,7 +171,20 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
    * @throws ClassCastException   if the specified object's type prevents it
    *                              from being compared to this object.
    */
-  @Override public int compareTo(ProcessUpdateBalance o) {
+  @Override
+  public int compareTo(ProcessInsertValue o) {
     return this.lastDate.compareTo(o.lastDate);
+  }
+
+  public long getIncrementVol01() {
+    return incrementVol01;
+  }
+
+  public long getIncrementVol02() {
+    return incrementVol02;
+  }
+
+  public long getIncrementVol03() {
+    return incrementVol03;
   }
 }

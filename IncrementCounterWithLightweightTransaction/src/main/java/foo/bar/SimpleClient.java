@@ -1,4 +1,4 @@
-package bar;
+package foo.bar;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
