@@ -1,6 +1,7 @@
 package foo.bar;
 
 import com.beust.jcommander.JCommander;
+import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -10,6 +11,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -66,8 +68,24 @@ public class OnlyInsertAndAggregate {
     for (int i = 0; i < numberThread; i++) {
       listProcessUpdateBalance.add(new ProcessInsertValue(timeToWork, countDownLatch, insertValue, clnt));
     }
-    // Удаляем данные
-    session.execute(String.format("delete from test_data_mart.counters_values where main_id = %s;", clnt));
+    ResultSet results = null;
+    UUID maxUUID = null;
+    results = session.execute(
+      new BoundStatement(
+        session.prepare(
+          "select insert_time " +
+            "from test_data_mart.counters_values " +
+            "where main_id = ? " +
+            "order by insert_time desc " +
+            "LIMIT 1;"
+        )
+      ).bind(clnt)
+    );
+    Row row;
+    if (results != null && (row = results.one()) != null) {
+      maxUUID = row.getUUID("insert_time");
+    }
+
 
     for (int i = 0; i < numberThread; i++) {
       System.out.println("Запускаем нить:" + i);
@@ -147,24 +165,30 @@ public class OnlyInsertAndAggregate {
       )
     );
 
-    ResultSet results;
     long testVol01 = 0;
     long testVol02 = 0;
     long testVol03 = 0;
 
+    BoundStatement boundStatement;
+    // А вот теперь читаем с начала до отсечки :)
     results = session.execute(
-      String.format(
-        "select vol_01, vol_02, vol_03 from test_data_mart.counters_values where main_id = %s;", clnt
-      )
+      new BoundStatement(
+        session.prepare(
+          "select  vol_01, vol_02, vol_03 \n" +
+            "from test_data_mart.counters_values \n" +
+            "where main_id = ? \n" +
+            "and insert_time > ? \n" +
+            ";\n"
+        )
+      ).bind(clnt, maxUUID)
     );
-    for (Row row : results) {
-      testVol01 += row.getLong("vol_01");
-      testVol02 += row.getLong("vol_02");
-      testVol03 += row.getLong("vol_03");
+    for (Row item : results) {
+      testVol01 += item.getLong("vol_01");
+      testVol02 += item.getLong("vol_02");
+      testVol03 += item.getLong("vol_03");
     }
     System.out.println(String.format("%s", line));
 
-    System.out.println("Кассандра");
     System.out.println(
       String.format(
         header,
@@ -178,6 +202,14 @@ public class OnlyInsertAndAggregate {
       )
     );
     System.out.println(String.format("%s", line));
+
+
+//    boundStatement = new BoundStatement(session.prepare("select insert_time from counters_values where main_id = ? order by insert_time asc LIMIT 1;"));
+
+//    boundStatement = new BoundStatement(session.prepare("select vol_01, vol_02, vol_03 from test_data_mart.counters_values where main_id = ? LIMIT 1000000;"));
+//    boundStatement.setFetchSize(1000);
+
+
     client.close();
 
   }
