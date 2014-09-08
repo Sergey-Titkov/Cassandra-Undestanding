@@ -24,7 +24,7 @@ public class InsertValue {
 
   // CSQL запросы абсолютно одинаковы для всех объектов.
   private static String insertCQL =
-    "insert into test_data_mart.counters_values(main_id, insert_time, vol_01, vol_02, vol_03) \n" +
+    "insert into test_data_mart_.counters_values(main_id, insert_time, vol_01, vol_02, vol_03) \n" +
       "values(?, now(), ?, ?, ?);";
 
 

@@ -79,6 +79,9 @@ public class ProcessInsertValue extends Thread implements Comparable<ProcessInse
         long vol02 = rand.nextInt(100);
         long vol03 = rand.nextInt(50);
 
+        vol01 = 1;
+        vol02 = 10;
+        vol03 = 100;
         // Обновляем
         int numberOfChance = insertValue.updateBalance(
           client,
