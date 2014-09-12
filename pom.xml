@@ -35,6 +35,7 @@
     <module>OnlyInsertAndAggregate</module>
     <module>IncrementWithLightweightTransaction</module>
     <module>GenerateTimeUUD</module>
+    <module>CheckClaster</module>
   </modules>
 
   <dependencyManagement>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>Cassandra-Understanding</artifactId>
+    <groupId>foo.foo.bar</groupId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>CheckClaster</artifactId>
+  <name>Проверка кластера кассандры на работоспособность .</name>
+  <description>
+    Идея утилиты следующая:
+    Создаем пространство ключей с репликацией на все ноды кластера.
+    Пишем в это пространство ключей, точее в таблицу
+    Режим записи ONE.
+    И читаем, чтение ALL.
+    И проверяем данные, если идут постоянно ошибки time, настраиваем тайм ауты.
+    или приводим в чувство кластер.</description>
+  <packaging>jar</packaging>
+
+  <dependencies>
+    <!-- Разбор параметров коммандной строки -->
+    <dependency>
+      <groupId>com.beust</groupId>
+      <artifactId>jcommander</artifactId>
+    </dependency>
+
+    <!-- Cassandra -->
+    <dependency>
+      <groupId>com.datastax.cassandra</groupId>
+      <artifactId>cassandra-driver-core</artifactId>
+    </dependency>
+
+    <!-- Логирование -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>jcl-over-slf4j</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
+    </dependency>
+
+  </dependencies>
+
+</project>
