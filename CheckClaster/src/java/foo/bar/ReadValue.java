@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
  * @version 001.00
  * @since 001.00
  */
-public class InsertValue {
+public class ReadValue {
   private Logger logger = LoggerFactory.getLogger(getClass());
 
   private Session session;
@@ -39,7 +39,7 @@ public class InsertValue {
    * @param session       Сессия для подключения к кластеру Кассандры.
    * @param maxErrorOccur Сколько ошибок WriteTimeoutException может возникнуть при попытке изменить запись.
    */
-  public InsertValue(Session session, int maxErrorOccur) {
+  public ReadValue(Session session, int maxErrorOccur) {
     this.session = session;
     insertPreparedStatement = this.session.prepare(insertCQL);
     this.maxErrorOccur = maxErrorOccur > 0 ? maxErrorOccur : this.maxErrorOccur;

@@ -19,7 +19,28 @@ import java.util.concurrent.TimeUnit;
  * @version 001.00
  * @since 001.00
  */
-public class OnlyInsertAndAggregate {
+public class CheckClaster {
+
+  public static final String CLASTER_NAME = "check_cluster";
+  public static final String TABLE_NAME = "test_table";
+
+  private static final String create_keyspace =
+    "CREATE KEYSPACE if not exists " + CLASTER_NAME + "\n" +
+      "  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };\n";
+
+  // Всегда изменям пространство ключей таким образом, что бы оно реплицировалось на все ноды кластера.
+  private static final String alter_keyspace =
+    "alter KEYSPACE " + CLASTER_NAME + " " +
+      "WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : %d };";
+
+  // Всегда создаем новую таблицу.
+  private static final String create_table =
+    "create table if not exists " + CLASTER_NAME + "." + TABLE_NAME + "(\n" +
+      "  main_id bigint,\n" +
+      "insert_time timeuuid,\n" +
+      "vol_01 bigint,\n" +
+      "PRIMARY KEY (main_id,insert_time)\n" +
+      ") WITH CLUSTERING ORDER BY (insert_time DESC);";
 
   public static void main(String[] args) {
     try {
@@ -36,36 +57,53 @@ public class OnlyInsertAndAggregate {
     } catch (Exception e) {
       System.err.println("Ошибка в аргументах командоной строки: " + Arrays.toString(args));
       jCommander = new JCommander(commandLineParameters);
-      jCommander.setProgramName("OnlyInsertAndAggregate", "Многопоточное обновление значения баланса в кассандре.");
-      jCommander.usage();
+      showUsega(jCommander);
       return;
-
     }
 
     if (commandLineParameters.help) {
-      jCommander.setProgramName("OnlyInsertAndAggregate", "Многопоточное обновление значения баланса в кассандре.");
-      jCommander.usage();
+      showUsega(jCommander);
       return;
     }
-
     SimpleClient client = new SimpleClient();
     client.connect(commandLineParameters.host);
     Session session = client.getSession();
 
-    Long clnt = Long.valueOf(commandLineParameters.client);
+    // Настраиваем пространсво ключей, таким образом что бы оно реплицировалось на все ноды кластера.
+    session.execute(create_keyspace);
+    session.execute(String.format(alter_keyspace, client.getNumberOfHosts()));
 
-    // Прницип работы UpdateBalance это LTS, создали и передели в нитки
-    InsertValue insertValue = new InsertValue(session, 10);
-    AggregateValue aggregateValue = new AggregateValue(session, 10);
+    // Создаем по необходимости таблицу
+    session.execute(create_table);
+
+    // Формируем случайный ключ строки.
+    Long mainID = Long.valueOf(new Random().nextInt(1000000));
 
     int numberThread = commandLineParameters.numberOfThread < 0 || commandLineParameters.numberOfThread > 128 ? 10 : commandLineParameters.numberOfThread;
     int timeToWork = commandLineParameters.time < 0 || commandLineParameters.time > 86400 ? 5 : commandLineParameters.time;
+    CountDownLatch countDownLatchWriter = new CountDownLatch(numberThread + 1);
+    CountDownLatch countDownLatchReader = new CountDownLatch(numberThread + 1);
 
-    CountDownLatch countDownLatch = new CountDownLatch(numberThread + 1);
+    // Объекты для работы с данными
+    WriteValue = new WriteValue(session, 10);
+    ReadValue aggregateValue = new AggregateValue(session, 10);
 
-    List<ProcessInsertValue> listProcessUpdateBalance = new ArrayList<>();
+    // Запускаем нити пищущие данные в таблицу.
+
+    // Запускаем нити читающие данные из таблицы.
+
+    // Ждем когда все писатели отработают. И еще раз запускаем читателей, для проверки корретности чтения/записи.
+
+
+    Long clnt = Long.valueOf(commandLineParameters.mainID);
+
+
+
+
+
+    List<ProcessWriteValue> listProcessUpdateBalance = new ArrayList<>();
     for (int i = 0; i < numberThread; i++) {
-      listProcessUpdateBalance.add(new ProcessInsertValue(timeToWork, countDownLatch, insertValue, clnt));
+      listProcessUpdateBalance.add(new ProcessWriteValue(timeToWork, countDownLatch, insertValue, clnt));
     }
 
     ProcessAggregateValue processAggregateValue = new ProcessAggregateValue(
@@ -139,7 +177,7 @@ public class OnlyInsertAndAggregate {
     long totalUpdates = 0;
     long numberUpdates = 0;
 
-    for (ProcessInsertValue item : listProcessUpdateBalance) {
+    for (ProcessWriteValue item : listProcessUpdateBalance) {
       System.out.println(
         String.format(
           header,
@@ -200,7 +238,7 @@ public class OnlyInsertAndAggregate {
           )
         ).bind(clnt, maxUUID)
       );
-    }else{
+    } else {
       // А вот теперь читаем с начала до отсечки :)
       results = session.execute(
         new BoundStatement(
@@ -399,6 +437,11 @@ public class OnlyInsertAndAggregate {
 
     client.close();
 
+  }
+
+  private static void showUsega(JCommander jCommander) {
+    jCommander.setProgramName("CheckClaster", "Проверка кластера кассандры на работоспособность.");
+    jCommander.usage();
   }
 
 

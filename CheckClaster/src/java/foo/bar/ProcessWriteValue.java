@@ -8,7 +8,6 @@ import java.util.Calendar;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Описание
@@ -17,15 +16,12 @@ import java.util.concurrent.TimeUnit;
  * @version 001.00
  * @since 001.00
  */
-public class ProcessAggregateValue extends Thread {
-  public long totalProcessRow = 0;
-  public long totalDuration = 0;
-
+public class ProcessWriteValue extends Thread implements Comparable<ProcessWriteValue> {
   // Наш любимый логер.
   private Logger logger = LoggerFactory.getLogger(getClass());
 
   // Что обновляет баланс
-  private AggregateValue aggregateValue;
+  private WriteValue insertValue;
 
   // Время работы нити в секундах
   private int countDownTime;
@@ -52,18 +48,14 @@ public class ProcessAggregateValue extends Thread {
   private long incrementVol02 = 0;
   private long incrementVol03 = 0;
 
-  private int period;
-
   /**
    * Основной конструктор
    */
-  public ProcessAggregateValue(int workTime, int period, CountDownLatch endWorkCDL, AggregateValue aggregateValue, Long client) {
+  public ProcessWriteValue(int workTime, CountDownLatch endWorkCDL, WriteValue insertValue, Long client) {
     this.countDownTime = workTime;
     this.endWorkCDL = endWorkCDL;
-    this.aggregateValue = aggregateValue;
+    this.insertValue = insertValue;
     this.client = client;
-    this.period = period > 0 ? period : 10;
-
   }
 
   public void run() {
@@ -82,14 +74,23 @@ public class ProcessAggregateValue extends Thread {
       // Обновляем баланс.
       while (dateEnd.compareTo(Calendar.getInstance()) > 0) {
 
-        // Обновляем
-        int numberOfChance = aggregateValue.aggregateValue(
-          client
-        );
-        totalProcessRow += aggregateValue.numberRow;
-        totalDuration += aggregateValue.duration;
+        // Рандомные значения счетчиков.
+        long vol01 = rand.nextInt(10);
+        long vol02 = rand.nextInt(100);
+        long vol03 = rand.nextInt(50);
 
-        numberOfWriteTimeoutException = numberOfWriteTimeoutException + (aggregateValue
+        vol01 = 1;
+        vol02 = 10;
+        vol03 = 100;
+        // Обновляем
+        int numberOfChance = insertValue.updateBalance(
+          client,
+          vol01,
+          vol02,
+          vol03
+        );
+
+        numberOfWriteTimeoutException = numberOfWriteTimeoutException + (insertValue
           .getMaxErrorOccur() - numberOfChance);
 
         // Увеличиваем счетчик в том случае если совсем не удалось обновить баланс.
@@ -97,13 +98,14 @@ public class ProcessAggregateValue extends Thread {
           numberOfErrorUpdateBalance++;
         }
 
+        incrementVol01 += vol01;
+        incrementVol02 += vol02;
+        incrementVol03 += vol03;
+
         // Сколько успели сделать.
         numberUpdates++;
-        TimeUnit.SECONDS.sleep(period);
       }
 
-    } catch (InterruptedException e) {
-      e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
     } finally {
       this.endWorkCDL.countDown();
       logger.debug("Конец работы нити: {}.", threadUUID);
@@ -132,6 +134,49 @@ public class ProcessAggregateValue extends Thread {
 
   public long getNumberUpdates() {
     return numberUpdates;
+  }
+
+  /**
+   * Compares this object with the specified object for order.  Returns a
+   * negative integer, zero, or a positive integer as this object is less
+   * than, equal to, or greater than the specified object.
+   * <p/>
+   * <p>The implementor must ensure <tt>sgn(x.compareTo(y)) ==
+   * -sgn(y.compareTo(x))</tt> for all <tt>x</tt> and <tt>y</tt>.  (This
+   * implies that <tt>x.compareTo(y)</tt> must throw an exception iff
+   * <tt>y.compareTo(x)</tt> throws an exception.)
+   * <p/>
+   * <p>The implementor must also ensure that the relation is transitive:
+   * <tt>(x.compareTo(y)&gt;0 &amp;&amp; y.compareTo(z)&gt;0)</tt> implies
+   * <tt>x.compareTo(z)&gt;0</tt>.
+   * <p/>
+   * <p>Finally, the implementor must ensure that <tt>x.compareTo(y)==0</tt>
+   * implies that <tt>sgn(x.compareTo(z)) == sgn(y.compareTo(z))</tt>, for
+   * all <tt>z</tt>.
+   * <p/>
+   * <p>It is strongly recommended, but <i>not</i> strictly required that
+   * <tt>(x.compareTo(y)==0) == (x.equals(y))</tt>.  Generally speaking, any
+   * class that implements the <tt>Comparable</tt> interface and violates
+   * this condition should clearly indicate this fact.  The recommended
+   * language is "Note: this class has a natural ordering that is
+   * inconsistent with equals."
+   * <p/>
+   * <p>In the foregoing description, the notation
+   * <tt>sgn(</tt><i>expression</i><tt>)</tt> designates the mathematical
+   * <i>signum</i> function, which is defined to return one of <tt>-1</tt>,
+   * <tt>0</tt>, or <tt>1</tt> according to whether the value of
+   * <i>expression</i> is negative, zero or positive.
+   *
+   * @param o the object to be compared.
+   * @return a negative integer, zero, or a positive integer as this object
+   *         is less than, equal to, or greater than the specified object.
+   * @throws NullPointerException if the specified object is null
+   * @throws ClassCastException   if the specified object's type prevents it
+   *                              from being compared to this object.
+   */
+  @Override
+  public int compareTo(ProcessWriteValue o) {
+    return this.lastDate.compareTo(o.lastDate);
   }
 
   public long getIncrementVol01() {

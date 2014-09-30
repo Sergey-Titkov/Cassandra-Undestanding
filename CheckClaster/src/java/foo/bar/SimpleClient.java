@@ -44,6 +44,11 @@ public class SimpleClient {
   public Session getSession() {
     return this.session;
   }
+
+  public Integer getNumberOfHosts(){
+    return cluster.getMetadata().getAllHosts().size();
+  }
+
   public void close() {
     cluster.close();
   }

@@ -16,7 +16,7 @@ import java.util.concurrent.CountDownLatch;
  * @version 001.00
  * @since 001.00
  */
-public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUpdateBalance>{
+public class ProcessReadValue extends Thread implements Comparable<ProcessReadValue>{
   // Наш любимый логер.
   private Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -47,7 +47,7 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
   /**
    * Основной конструктор
    */
-  public ProcessUpdateBalance(int workTime, CountDownLatch endWorkCDL, UpdateBalance updateBalance, Long client) {
+  public ProcessReadValue(int workTime, CountDownLatch endWorkCDL, UpdateBalance updateBalance, Long client) {
     this.countDownTime = workTime;
     this.endWorkCDL = endWorkCDL;
     this.updateBalance = updateBalance;
@@ -166,7 +166,7 @@ public class ProcessUpdateBalance extends Thread implements Comparable<ProcessUp
    * @throws ClassCastException   if the specified object's type prevents it
    *                              from being compared to this object.
    */
-  @Override public int compareTo(ProcessUpdateBalance o) {
+  @Override public int compareTo(ProcessReadValue o) {
     return this.lastDate.compareTo(o.lastDate);
   }
 }

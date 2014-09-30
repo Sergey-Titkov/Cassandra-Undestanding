@@ -1,42 +1,32 @@
 package foo.bar;
 
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Date;
-
 /**
- * Класс предназначен для обновления баланса клиента.
- * Предполагается, что обновление происходит из множества потоков, задача класса не допустить затирание баланса
- * не правильными данными.
+ * Описание
  *
  * @author Sergey.Titkov
  * @version 001.00
  * @since 001.00
  */
-public class UpdateBalance {
+public class WriteValue {
   private Logger logger = LoggerFactory.getLogger(getClass());
 
   private Session session;
 
   // Один раз для сесси, рекомендацци DataStax
   private PreparedStatement insertPreparedStatement;
-  private PreparedStatement updatePreparedStatement;
 
   // CSQL запросы абсолютно одинаковы для всех объектов.
   private static String insertCQL =
-    "insert into test_data_mart.balances(bal, eventTime, clnt_id) \n" +
-      "values(?,?, ?)\n" +
-      "IF NOT EXISTS;\n";
+    "insert into test_data_mart_.counters_values(main_id, insert_time, vol_01, vol_02, vol_03) \n" +
+      "values(?, now(), ?, ?, ?);";
 
-  private static String updateCQL =
-    "update test_data_mart.balances \n" +
-      "set bal = ?, \n" +
-      "eventTime = ? \n" +
-      "where clnt_id = ?" +
-      "if eventTime = ?;";
 
   /**
    * Сколько ошибок WriteTimeoutException может возникнуть при попытке изменить запись.
@@ -49,10 +39,9 @@ public class UpdateBalance {
    * @param session       Сессия для подключения к кластеру Кассандры.
    * @param maxErrorOccur Сколько ошибок WriteTimeoutException может возникнуть при попытке изменить запись.
    */
-  public UpdateBalance(Session session, int maxErrorOccur) {
+  public WriteValue(String fullTableName, Long mainID, Session session, int maxErrorOccur) {
     this.session = session;
     insertPreparedStatement = this.session.prepare(insertCQL);
-    updatePreparedStatement = this.session.prepare(updateCQL);
     this.maxErrorOccur = maxErrorOccur > 0 ? maxErrorOccur : this.maxErrorOccur;
   }
 
@@ -66,37 +55,20 @@ public class UpdateBalance {
    * станет больше чем  eventDate.
    *
    * @param client    Клиент
-   * @param balance   Баланс
-   * @param eventDate Дата события.
    * @return Количество оставшихся попыток обновления. Если значение ==0, это означает, что во время выполнения
    *         обновления баланса возникло  getMaxErrorOccur ошибок WriteTimeoutException.
    */
   public int updateBalance(
-    Long client, java.math.BigDecimal balance, Date eventDate
+    Long client, long vol_01, long vol_02, long vol_03
   ) {
     int errorOccur = maxErrorOccur;
     while (errorOccur > 0) {
       try {
         BoundStatement boundStatement;
-        ResultSet results;
-        Row row;
         boundStatement = new BoundStatement(insertPreparedStatement);
-        results = session.execute(
-          boundStatement.bind(balance, eventDate, client)
+        session.execute(
+          boundStatement.bind(client, vol_01, vol_02, vol_03)
         );
-        row = results.one();
-        logger.debug("Вставка {}", row);
-        // Как то так!
-        while (!row.getBool("[applied]") && eventDate.compareTo(row.getDate("eventtime")) > 0) {
-          boundStatement = new BoundStatement(updatePreparedStatement);
-          results = session.execute(
-            boundStatement.bind(
-              balance, eventDate, client, row.getDate("eventtime")
-            )
-          );
-          row = results.one();
-          logger.debug("Обновление {}", row);
-        }
         break;
       } catch (WriteTimeoutException e) {
         logger.debug("Ошибка при обновлении: {}", e);
