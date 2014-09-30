@@ -24,9 +24,8 @@ public class WriteValue {
 
   // CSQL запросы абсолютно одинаковы для всех объектов.
   private static String insertCQL =
-    "insert into test_data_mart_.counters_values(main_id, insert_time, vol_01, vol_02, vol_03) \n" +
-      "values(?, now(), ?, ?, ?);";
-
+    "insert into %s (main_id, insert_time, vol_01) \n" +
+      "values(?, now(), ?);";
 
   /**
    * Сколько ошибок WriteTimeoutException может возникнуть при попытке изменить запись.
@@ -39,27 +38,15 @@ public class WriteValue {
    * @param session       Сессия для подключения к кластеру Кассандры.
    * @param maxErrorOccur Сколько ошибок WriteTimeoutException может возникнуть при попытке изменить запись.
    */
-  public WriteValue(String fullTableName, Long mainID, Session session, int maxErrorOccur) {
+  public WriteValue(String fullTableName, Session session, int maxErrorOccur) {
     this.session = session;
-    insertPreparedStatement = this.session.prepare(insertCQL);
+    String cql = String.format(insertCQL, fullTableName);
+    insertPreparedStatement = this.session.prepare(cql);
     this.maxErrorOccur = maxErrorOccur > 0 ? maxErrorOccur : this.maxErrorOccur;
   }
 
-  /**
-   * Обновление баланса указанного клиента.
-   * Для обновления баланса используется механизм легковесных транзакций.
-   * Алгоритм работы следующий.
-   * Если eventDate меньше чем дата в таблице кассандры, то в этом случае баланс не обновляется.
-   * Если же eventDate больше чем дата в таблице кассандры, то будет предпринята попытка обновления баланса.
-   * Если попытка будет не успешная, то она будет повторена. Попытки будут повторяться до тех пор пока значение в базе не
-   * станет больше чем  eventDate.
-   *
-   * @param client    Клиент
-   * @return Количество оставшихся попыток обновления. Если значение ==0, это означает, что во время выполнения
-   *         обновления баланса возникло  getMaxErrorOccur ошибок WriteTimeoutException.
-   */
-  public int updateBalance(
-    Long client, long vol_01, long vol_02, long vol_03
+  public int write(
+    Long mainID, long vol_01
   ) {
     int errorOccur = maxErrorOccur;
     while (errorOccur > 0) {
@@ -67,7 +54,7 @@ public class WriteValue {
         BoundStatement boundStatement;
         boundStatement = new BoundStatement(insertPreparedStatement);
         session.execute(
-          boundStatement.bind(client, vol_01, vol_02, vol_03)
+          boundStatement.bind(mainID, vol_01)
         );
         break;
       } catch (WriteTimeoutException e) {

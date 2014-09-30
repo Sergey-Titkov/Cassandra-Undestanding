@@ -16,10 +16,6 @@ public class CommandLineParameters {
              required = true)
   public String host = "127.0.0.1";
 
-  @Parameter(names = {"--rowKey"},
-             description = "Идентификатор строки в таблице")
-  public Integer mainID = 1000000;
-
   @Parameter(names = {"--numberOfThread"},
              description = "Колличетсво нитей обновления. MAX 128")
   public Integer numberOfThread = 10;
