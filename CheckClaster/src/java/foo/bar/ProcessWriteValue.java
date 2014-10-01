@@ -148,4 +148,8 @@ public class ProcessWriteValue extends Thread implements Comparable<ProcessWrite
   public int getNumberOfWriteTimeoutException() {
     return numberOfWriteTimeoutException;
   }
+
+  public UUID getThreadUUID() {
+    return threadUUID;
+  }
 }

@@ -1,16 +1,14 @@
 package foo.bar;
 
 import com.beust.jcommander.JCommander;
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 
 import java.io.UnsupportedEncodingException;
-import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Исполняемый класс
@@ -90,16 +88,18 @@ public class CheckClaster {
     ReadValue readValue = new ReadValue(fullTableName, session, MAX_ERROR_OCCUR);
 
     // Запускаем нити пищущие данные в таблицу.
+    System.out.println("Запускаем писателей.");
     List<ProcessWriteValue> listProcessWriteValue = new ArrayList<>(numberThread);
     for (int i = 0; i < numberThread; i++) {
-      listProcessWriteValue.add(new ProcessWriteValue(timeToWork, countDownLatchWriter, mainID));
+      listProcessWriteValue.add(new ProcessWriteValue(timeToWork, countDownLatchWriter, writeValue, mainID));
       listProcessWriteValue.get(i).start();
     }
 
     // Запускаем нити читающие данные из таблицы.
+    System.out.println("Запускаем читателей.");
     List<ProcessReadValue> listProcessReadValue = new ArrayList<>(numberThread);
     for (int i = 0; i < numberThread; i++) {
-      listProcessReadValue.add(new ProcessReadValue(timeToWork, countDownLatchReader, mainID));
+      listProcessReadValue.add(new ProcessReadValue(timeToWork, countDownLatchReader, readValue, mainID));
       listProcessReadValue.get(i).start();
     }
 
@@ -110,15 +110,165 @@ public class CheckClaster {
     } catch (InterruptedException e) {
       System.err.println("Ошибка при ожидании завершения нитей: " + e.getMessage());
     }
+
+    System.out.println("Контрольное чтение.");
+    countDownLatchReader = new CountDownLatch(numberThread + 1);
     // И еще раз запускаем читателей, для проверки корретности чтения/записи.
-    List<ProcessReadValue> listProcessReadValue = new ArrayList<>(numberThread);
+    listProcessReadValue = new ArrayList<>(numberThread);
     for (int i = 0; i < numberThread; i++) {
-      listProcessReadValue.add(new ProcessReadValue(0, countDownLatchReader, mainID));
+      listProcessReadValue.add(new ProcessReadValue(0, countDownLatchReader, readValue, mainID));
       listProcessReadValue.get(i).start();
     }
 
-    // Сверяем данные.
+    System.out.println("Строковый ключ: " + mainID);
+    System.out.println("Писатели:");
+    String header = "%-36s\t%-28s\t%-28s\t%-28s\t%-28s\t%-28s";
+    String line =
+      "------------------------------------\t" +
+      "----------------------------\t" +
+      "----------------------------\t" +
+      "----------------------------\t" +
+      "----------------------------\t" +
+      "----------------------------\t";
+    System.out.println(
+      String.format(
+        header + "\n%s",
+        "UUID",
+        "Сумма Vol",
+        "Всего таймаутов",
+        "Не удалось обновить счетчики",
+        "Вставлено записей",
+        "Обновлений в секунду",
+        line
+      )
+    );
+    long sumVol = 0;
+    long totalRowInsert = 0;
+    long totalInsertPerSecond = 0;
 
+    for (ProcessWriteValue item : listProcessWriteValue) {
+      System.out.println(
+        String.format(
+          header,
+          item.getThreadUUID(),
+          item.getSumVol(),
+          item.getNumberOfWriteTimeoutException(),
+          item.getNumberOfErrorWriteValue(),
+          item.getNumberOfInsert(),
+          Math.round((item.getNumberOfInsert() / item.getDuration())*1000)
+        )
+      );
+      sumVol += item.getSumVol();
+      totalInsertPerSecond += Math.round((item.getNumberOfInsert() / item.getDuration())*1000);
+    }
+    System.out.println(line);
+    System.out.println(
+      String.format(
+        header,
+        "",
+        sumVol,
+        "",
+        "",
+        "",
+        totalInsertPerSecond
+      )
+    );
+    System.out.println(line);
+
+    System.out.println("Читатели:");
+    header = "%-36s\t%-28s\t%-28s\t%-28s\t%-28s\t%-28s";
+    line =
+      "------------------------------------\t" +
+        "----------------------------\t" +
+        "----------------------------\t" +
+        "----------------------------\t" +
+        "----------------------------\t" +
+        "----------------------------\t";
+    System.out.println(
+      String.format(
+        header + "\n%s",
+        "UUID",
+        "Сумма Vol",
+        "Всего таймаутов",
+        "Не удалось обновить счетчики",
+        "Вставлено записей",
+        "Обновлений в секунду",
+        line
+      )
+    );
+    sumVol = 0;
+    totalRowInsert = 0;
+    totalInsertPerSecond = 0;
+
+    for (ProcessReadValue item : listProcessReadValue) {
+      System.out.println(
+        String.format(
+          header,
+          item.getThreadUUID(),
+          item.getSumVol(),
+          item.getNumberOfReadTimeoutException(),
+          item.getNumberOfErrorReadValue(),
+          item.getNumberOfProcessCol(),
+          Math.round((item.getNumberOfProcessCol() / item.getDuration())*1000)
+        )
+      );
+    }
+
+
+    // Сверяем данные.
+//    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSS");
+//
+//    System.out.println("Закончили");
+//    System.out.println("Последние значения балансов для нити:");
+//    String header = "%-36s\t%-20s\t%-20s\t%-20s\t%-20s\t%-28s\t%-20s\t%-20s";
+//    String line = "------------------------------------\t" +
+//      "--------------------\t" +
+//      "--------------------\t" +
+//      "--------------------\t" +
+//      "--------------------\t" +
+//      "----------------------------\t" +
+//      "--------------------\t";
+//    System.out.println(
+//      String.format(
+//        header + "\n%s",
+//        "UUID",
+//        "VOL 01",
+//        "VOL 02",
+//        "VOL 03",
+//        "WriteTimeoutException",
+//        "Не удалось обновить счетчики",
+//        "Вставлено записей",
+//        "Обновлений в секунду",
+//        line
+//      )
+//    );
+//
+//    long incrementVol01 = 0;
+//    long incrementVol02 = 0;
+//    long incrementVol03 = 0;
+//    long totalUpdates = 0;
+//    long numberUpdates = 0;
+//
+//    for (ProcessWriteValue item : listProcessUpdateBalance) {
+//      System.out.println(
+//        String.format(
+//          header,
+//          item.getThreadUUID(),
+//          item.getIncrementVol01(),
+//          item.getIncrementVol02(),
+//          item.getIncrementVol03(),
+//          item.getNumberOfReadTimeoutException(),
+//          item.getNumberOfErrorWriteValue(),
+//          item.getNumberOfInsert(),
+//          Math.round(item.getNumberOfInsert() / timeToWork)
+//        )
+//      );
+//      incrementVol01 += item.getIncrementVol01();
+//      incrementVol02 += item.getIncrementVol02();
+//      incrementVol03 += item.getIncrementVol03();
+//      totalUpdates += item.getNumberOfInsert();
+//      numberUpdates += Math.round(item.getNumberOfInsert() / timeToWork);
+//    }
     /*
 
      */
