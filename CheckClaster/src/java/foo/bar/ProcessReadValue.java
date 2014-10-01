@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.Calendar;
-import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
@@ -16,12 +15,13 @@ import java.util.concurrent.CountDownLatch;
  * @version 001.00
  * @since 001.00
  */
-public class ProcessReadValue extends Thread implements Comparable<ProcessReadValue>{
+public class ProcessReadValue extends Thread implements Comparable<ProcessReadValue> {
   // Наш любимый логер.
   private Logger logger = LoggerFactory.getLogger(getClass());
 
-  // Что обновляет баланс
-  private UpdateBalance updateBalance;
+  private ReadValue readValue;
+
+  private Long rowKey;
 
   // Время работы нити в секундах
   private int countDownTime;
@@ -32,26 +32,22 @@ public class ProcessReadValue extends Thread implements Comparable<ProcessReadVa
   // Идентификатро нити.
   private UUID threadUUID = UUID.randomUUID();
 
-  private Long client;
-
-  // С календарем удобнее работать, чем с Date
-  // Полследние значения даты обновления баланса и значения баланса, нужно для контроля.
-  private Calendar lastDate = Calendar.getInstance();
-  private BigDecimal lastBal;
-
   // Метрики работы.
-  private int numberOfWriteTimeoutException = 0;
-  private int numberOfErrorUpdateBalance = 0;
-  private long numberUpdates = 0;
+  private int numberOfReadTimeoutException = 0;
+  private int numberOfErrorReadValue = 0;
+  private long numberOfProcessCol = 0;
+  private long duration = 0;
+
+  private long sumVol = 0;
 
   /**
    * Основной конструктор
    */
-  public ProcessReadValue(int workTime, CountDownLatch endWorkCDL, UpdateBalance updateBalance, Long client) {
+  public ProcessReadValue(int workTime, CountDownLatch endWorkCDL, ReadValue readValue, Long rowKey) {
     this.countDownTime = workTime;
     this.endWorkCDL = endWorkCDL;
-    this.updateBalance = updateBalance;
-    this.client = client;
+    this.readValue = readValue;
+    this.rowKey = rowKey;
   }
 
   public void run() {
@@ -60,72 +56,32 @@ public class ProcessReadValue extends Thread implements Comparable<ProcessReadVa
       logger.debug("Начало работы нити: {} ", threadUUID);
       countDownTime = countDownTime < 1 ? 1 : countDownTime;
 
+      Calendar dateBegin = Calendar.getInstance();
       Calendar dateEnd = Calendar.getInstance();
       dateEnd.add(Calendar.SECOND, countDownTime);
 
       BigDecimal bal;
+      do {
+        ReadValueResult readValueResult = readValue.read(rowKey);
 
-      Random rand = new Random();
-
-      // Обновляем баланс.
-      while (dateEnd.compareTo(Calendar.getInstance()) > 0) {
-
-        // Рандомное значение наскольку надо сдвинуть дату от текущей.
-        int randomMillisecond = rand.nextInt(1000000);
-        // Будем прибавлять или удалять
-        boolean isPositive = rand.nextBoolean();
-        Calendar eventTime = Calendar.getInstance();
-        eventTime.add(Calendar.MILLISECOND, isPositive ? randomMillisecond:-1*randomMillisecond);
-
-        // Рандомный баланс
-        bal = BigDecimal.valueOf(rand.nextDouble());
-
-        // Обновляем
-        int numberOfChance = updateBalance.updateBalance(this.client, bal, eventTime.getTime());
-        numberOfWriteTimeoutException = numberOfWriteTimeoutException + (updateBalance.getMaxErrorOccur() - numberOfChance);
+        numberOfReadTimeoutException = numberOfReadTimeoutException + readValue.getMaxErrorOccur();
 
         // Увеличиваем счетчик в том случае если совсем не удалось обновить баланс.
-        if (numberOfChance==0){
-          numberOfErrorUpdateBalance++;
+        if (readValueResult.getErrorOccur() == readValue.getMaxErrorOccur()) {
+          numberOfErrorReadValue++;
         }
 
-        // Протоколируем факт обновления.
-        if (eventTime.compareTo(lastDate)>0){
-          lastDate = eventTime;
-          lastBal =  bal;
-        }
-        // Сколько успели сделать.
-        numberUpdates++;
-      }
+        sumVol = readValueResult.getSum();
+
+        // Сколько столбцов обработали.
+        numberOfProcessCol += readValueResult.getCount();
+
+      } while (dateEnd.compareTo(Calendar.getInstance()) > 0);
 
     } finally {
       this.endWorkCDL.countDown();
       logger.debug("Конец работы нити: {}.", threadUUID);
     }
-  }
-
-  public Calendar getLastDate() {
-    return lastDate;
-  }
-
-  public BigDecimal getLastBal() {
-    return lastBal;
-  }
-
-  public int getNumberOfWriteTimeoutException() {
-    return numberOfWriteTimeoutException;
-  }
-
-  public UUID getThreadUUID() {
-    return threadUUID;
-  }
-
-  public int getNumberOfErrorUpdateBalance() {
-    return numberOfErrorUpdateBalance;
-  }
-
-  public long getNumberUpdates() {
-    return numberUpdates;
   }
 
   /**
@@ -167,6 +123,30 @@ public class ProcessReadValue extends Thread implements Comparable<ProcessReadVa
    *                              from being compared to this object.
    */
   @Override public int compareTo(ProcessReadValue o) {
-    return this.lastDate.compareTo(o.lastDate);
+    return Long.compare(duration, o.duration);
+  }
+
+  public UUID getThreadUUID() {
+    return threadUUID;
+  }
+
+  public int getNumberOfReadTimeoutException() {
+    return numberOfReadTimeoutException;
+  }
+
+  public int getNumberOfErrorReadValue() {
+    return numberOfErrorReadValue;
+  }
+
+  public long getNumberOfProcessCol() {
+    return numberOfProcessCol;
+  }
+
+  public long getDuration() {
+    return duration;
+  }
+
+  public long getSumVol() {
+    return sumVol;
   }
 }

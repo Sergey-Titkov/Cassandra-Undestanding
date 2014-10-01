@@ -1,8 +1,6 @@
 package foo.bar;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Session;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,12 +18,13 @@ public class ReadValue {
   private Session session;
 
   // Один раз для сесси, рекомендацци DataStax
-  private PreparedStatement insertPreparedStatement;
+  private PreparedStatement selectPreparedStatement;
 
   // CSQL запросы абсолютно одинаковы для всех объектов.
-  private static String insertCQL =
-    "insert into test_data_mart_.counters_values(main_id, insert_time, vol_01, vol_02, vol_03) \n" +
-      "values(?, now(), ?, ?, ?);";
+  private static String selectCQL =
+    "select vol_01\n" +
+      "from %s\n" +
+      "where mail_id = ?;";
 
 
   /**
@@ -39,43 +38,40 @@ public class ReadValue {
    * @param session       Сессия для подключения к кластеру Кассандры.
    * @param maxErrorOccur Сколько ошибок WriteTimeoutException может возникнуть при попытке изменить запись.
    */
-  public ReadValue(Session session, int maxErrorOccur) {
+  public ReadValue(String fullTableName, Session session, int maxErrorOccur) {
     this.session = session;
-    insertPreparedStatement = this.session.prepare(insertCQL);
+    selectPreparedStatement = this.session.prepare(String.format(selectCQL, fullTableName));
     this.maxErrorOccur = maxErrorOccur > 0 ? maxErrorOccur : this.maxErrorOccur;
   }
 
-  /**
-   * Обновление баланса указанного клиента.
-   * Для обновления баланса используется механизм легковесных транзакций.
-   * Алгоритм работы следующий.
-   * Если eventDate меньше чем дата в таблице кассандры, то в этом случае баланс не обновляется.
-   * Если же eventDate больше чем дата в таблице кассандры, то будет предпринята попытка обновления баланса.
-   * Если попытка будет не успешная, то она будет повторена. Попытки будут повторяться до тех пор пока значение в базе не
-   * станет больше чем  eventDate.
-   *
-   * @param client    Клиент
-   * @return Количество оставшихся попыток обновления. Если значение ==0, это означает, что во время выполнения
-   *         обновления баланса возникло  getMaxErrorOccur ошибок WriteTimeoutException.
-   */
-  public int updateBalance(
-    Long client, long vol_01, long vol_02, long vol_03
+  public ReadValueResult read(
+    Long mainID
   ) {
-    int errorOccur = maxErrorOccur;
-    while (errorOccur > 0) {
+    Long result = null;
+    long count = 0;
+    int errorOccur = 0;
+    while (errorOccur <= maxErrorOccur) {
       try {
+        result = null;
+        count = 0;
         BoundStatement boundStatement;
-        boundStatement = new BoundStatement(insertPreparedStatement);
-        session.execute(
-          boundStatement.bind(client, vol_01, vol_02, vol_03)
+        boundStatement = new BoundStatement(selectPreparedStatement);
+        boundStatement.setFetchSize(1000);
+        boundStatement.setConsistencyLevel(ConsistencyLevel.ALL);
+        ResultSet resultSet = session.execute(
+          boundStatement.bind(mainID)
         );
+        for (Row row : resultSet) {
+          result += row.getLong("vol_01");
+          count++;
+        }
         break;
       } catch (WriteTimeoutException e) {
         logger.debug("Ошибка при обновлении: {}", e);
-        errorOccur--;
+        errorOccur++;
       }
     }
-    return errorOccur;
+    return new ReadValueResult(result, errorOccur, count);
   }
 
   /**

@@ -1,6 +1,7 @@
 package foo.bar;
 
 import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.WriteTimeoutException;
@@ -40,26 +41,26 @@ public class WriteValue {
    */
   public WriteValue(String fullTableName, Session session, int maxErrorOccur) {
     this.session = session;
-    String cql = String.format(insertCQL, fullTableName);
-    insertPreparedStatement = this.session.prepare(cql);
+    insertPreparedStatement = this.session.prepare(String.format(insertCQL, fullTableName));
     this.maxErrorOccur = maxErrorOccur > 0 ? maxErrorOccur : this.maxErrorOccur;
   }
 
   public int write(
     Long mainID, long vol_01
   ) {
-    int errorOccur = maxErrorOccur;
-    while (errorOccur > 0) {
+    int errorOccur = 0;
+    while (errorOccur <= maxErrorOccur) {
       try {
         BoundStatement boundStatement;
         boundStatement = new BoundStatement(insertPreparedStatement);
+        boundStatement.setConsistencyLevel(ConsistencyLevel.ONE);
         session.execute(
           boundStatement.bind(mainID, vol_01)
         );
         break;
       } catch (WriteTimeoutException e) {
         logger.debug("Ошибка при обновлении: {}", e);
-        errorOccur--;
+        errorOccur++;
       }
     }
     return errorOccur;

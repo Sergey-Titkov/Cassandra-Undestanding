@@ -212,17 +212,17 @@ public class CheckClaster {
 //          item.getIncrementVol01(),
 //          item.getIncrementVol02(),
 //          item.getIncrementVol03(),
-//          item.getNumberOfWriteTimeoutException(),
-//          item.getNumberOfErrorUpdateBalance(),
-//          item.getNumberUpdates(),
-//          Math.round(item.getNumberUpdates() / timeToWork)
+//          item.getNumberOfReadTimeoutException(),
+//          item.getNumberOfErrorWriteValue(),
+//          item.getNumberOfInsert(),
+//          Math.round(item.getNumberOfInsert() / timeToWork)
 //        )
 //      );
 //      incrementVol01 += item.getIncrementVol01();
 //      incrementVol02 += item.getIncrementVol02();
 //      incrementVol03 += item.getIncrementVol03();
-//      totalUpdates += item.getNumberUpdates();
-//      numberUpdates += Math.round(item.getNumberUpdates() / timeToWork);
+//      totalUpdates += item.getNumberOfInsert();
+//      numberUpdates += Math.round(item.getNumberOfInsert() / timeToWork);
 //    }
 //    System.out.println(
 //      String.format(

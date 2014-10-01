@@ -3,7 +3,6 @@ package foo.bar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.util.Calendar;
 import java.util.Random;
 import java.util.UUID;
@@ -20,8 +19,10 @@ public class ProcessWriteValue extends Thread implements Comparable<ProcessWrite
   // Наш любимый логер.
   private Logger logger = LoggerFactory.getLogger(getClass());
 
-  // Что обновляет баланс
-  private WriteValue insertValue;
+  // С помощью чего обновляем баланс.
+  private WriteValue writeValue;
+
+  private Long rowKey;
 
   // Время работы нити в секундах
   private int countDownTime;
@@ -32,30 +33,22 @@ public class ProcessWriteValue extends Thread implements Comparable<ProcessWrite
   // Идентификатро нити.
   private UUID threadUUID = UUID.randomUUID();
 
-  private Long client;
-
-  // С календарем удобнее работать, чем с Date
-  // Полследние значения даты обновления баланса и значения баланса, нужно для контроля.
-  private Calendar lastDate = Calendar.getInstance();
-  private BigDecimal lastBal;
-
   // Метрики работы.
   private int numberOfWriteTimeoutException = 0;
-  private int numberOfErrorUpdateBalance = 0;
-  private long numberUpdates = 0;
+  private int numberOfErrorWriteValue = 0;
+  private long numberOfInsert = 0;
+  private long duration = 0;
 
-  private long incrementVol01 = 0;
-  private long incrementVol02 = 0;
-  private long incrementVol03 = 0;
+  private long sumVol = 0;
 
   /**
    * Основной конструктор
    */
-  public ProcessWriteValue(int workTime, CountDownLatch endWorkCDL, WriteValue insertValue, Long client) {
+  public ProcessWriteValue(int workTime, CountDownLatch endWorkCDL, WriteValue writeValue, Long rowKey) {
     this.countDownTime = workTime;
     this.endWorkCDL = endWorkCDL;
-    this.insertValue = insertValue;
-    this.client = client;
+    this.writeValue = writeValue;
+    this.rowKey = rowKey;
   }
 
   public void run() {
@@ -64,76 +57,33 @@ public class ProcessWriteValue extends Thread implements Comparable<ProcessWrite
       logger.debug("Начало работы нити: {} ", threadUUID);
       countDownTime = countDownTime < 1 ? 1 : countDownTime;
 
+      Calendar dateBegin = Calendar.getInstance();
       Calendar dateEnd = Calendar.getInstance();
       dateEnd.add(Calendar.SECOND, countDownTime);
 
-      BigDecimal bal;
-
       Random rand = new Random();
 
-      // Обновляем баланс.
-      while (dateEnd.compareTo(Calendar.getInstance()) > 0) {
-
-        // Рандомные значения счетчиков.
-        long vol01 = rand.nextInt(10);
-        long vol02 = rand.nextInt(100);
-        long vol03 = rand.nextInt(50);
-
-        vol01 = 1;
-        vol02 = 10;
-        vol03 = 100;
+      do {
+        long vol = rand.nextInt(100);
         // Обновляем
-        int numberOfChance = insertValue.updateBalance(
-          client,
-          vol01,
-          vol02,
-          vol03
-        );
+        int numberOfChance = writeValue.write(rowKey, vol);
 
-        numberOfWriteTimeoutException = numberOfWriteTimeoutException + (insertValue
-          .getMaxErrorOccur() - numberOfChance);
+        numberOfWriteTimeoutException = numberOfWriteTimeoutException + numberOfChance;
 
         // Увеличиваем счетчик в том случае если совсем не удалось обновить баланс.
-        if (numberOfChance == 0) {
-          numberOfErrorUpdateBalance++;
+        if (numberOfChance == writeValue.getMaxErrorOccur()) {
+          numberOfErrorWriteValue++;
         }
+        sumVol += vol;
+        numberOfInsert++;
 
-        incrementVol01 += vol01;
-        incrementVol02 += vol02;
-        incrementVol03 += vol03;
+      } while (dateEnd.compareTo(Calendar.getInstance()) > 0);
 
-        // Сколько успели сделать.
-        numberUpdates++;
-      }
-
+      duration = Calendar.getInstance().getTimeInMillis() - dateBegin.getTimeInMillis();
     } finally {
       this.endWorkCDL.countDown();
       logger.debug("Конец работы нити: {}.", threadUUID);
     }
-  }
-
-  public Calendar getLastDate() {
-    return lastDate;
-  }
-
-  public BigDecimal getLastBal() {
-    return lastBal;
-  }
-
-  public int getNumberOfWriteTimeoutException() {
-    return numberOfWriteTimeoutException;
-  }
-
-  public UUID getThreadUUID() {
-    return threadUUID;
-  }
-
-  public int getNumberOfErrorUpdateBalance() {
-    return numberOfErrorUpdateBalance;
-  }
-
-  public long getNumberUpdates() {
-    return numberUpdates;
   }
 
   /**
@@ -176,18 +126,26 @@ public class ProcessWriteValue extends Thread implements Comparable<ProcessWrite
    */
   @Override
   public int compareTo(ProcessWriteValue o) {
-    return this.lastDate.compareTo(o.lastDate);
+    return Long.compare(duration, o.duration);
   }
 
-  public long getIncrementVol01() {
-    return incrementVol01;
+  public long getSumVol() {
+    return sumVol;
   }
 
-  public long getIncrementVol02() {
-    return incrementVol02;
+  public long getDuration() {
+    return duration;
   }
 
-  public long getIncrementVol03() {
-    return incrementVol03;
+  public long getNumberOfInsert() {
+    return numberOfInsert;
+  }
+
+  public int getNumberOfErrorWriteValue() {
+    return numberOfErrorWriteValue;
+  }
+
+  public int getNumberOfWriteTimeoutException() {
+    return numberOfWriteTimeoutException;
   }
 }
