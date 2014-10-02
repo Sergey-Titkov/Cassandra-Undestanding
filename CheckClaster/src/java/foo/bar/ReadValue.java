@@ -24,7 +24,7 @@ public class ReadValue {
   private static String selectCQL =
     "select vol_01\n" +
       "from %s\n" +
-      "where mail_id = ?;";
+      "where main_id = ?;";
 
 
   /**
@@ -47,12 +47,12 @@ public class ReadValue {
   public ReadValueResult read(
     Long mainID
   ) {
-    Long result = null;
+    long result = 0;
     long count = 0;
     int errorOccur = 0;
     while (errorOccur <= maxErrorOccur) {
       try {
-        result = null;
+        result = 0;
         count = 0;
         BoundStatement boundStatement;
         boundStatement = new BoundStatement(selectPreparedStatement);

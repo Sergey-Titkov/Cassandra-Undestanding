@@ -3,7 +3,6 @@ package foo.bar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.util.Calendar;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -36,6 +35,8 @@ public class ProcessReadValue extends Thread implements Comparable<ProcessReadVa
   private int numberOfReadTimeoutException = 0;
   private int numberOfErrorReadValue = 0;
   private long numberOfProcessCol = 0;
+  private long numberOfLastProcessCol = 0;
+
   private long duration = 0;
 
   private long sumVol = 0;
@@ -60,7 +61,6 @@ public class ProcessReadValue extends Thread implements Comparable<ProcessReadVa
       Calendar dateEnd = Calendar.getInstance();
       dateEnd.add(Calendar.SECOND, countDownTime);
 
-      BigDecimal bal;
       do {
         ReadValueResult readValueResult = readValue.read(rowKey);
 
@@ -74,10 +74,11 @@ public class ProcessReadValue extends Thread implements Comparable<ProcessReadVa
         sumVol = readValueResult.getSum();
 
         // Сколько столбцов обработали.
+        numberOfLastProcessCol = readValueResult.getCount();
         numberOfProcessCol += readValueResult.getCount();
 
       } while (dateEnd.compareTo(Calendar.getInstance()) > 0);
-
+      duration = Calendar.getInstance().getTimeInMillis() - dateBegin.getTimeInMillis();
     } finally {
       this.endWorkCDL.countDown();
       logger.debug("Конец работы нити: {}.", threadUUID);
@@ -148,5 +149,9 @@ public class ProcessReadValue extends Thread implements Comparable<ProcessReadVa
 
   public long getSumVol() {
     return sumVol;
+  }
+
+  public long getNumberOfLastProcessCol() {
+    return numberOfLastProcessCol;
   }
 }
