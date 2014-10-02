@@ -64,7 +64,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>foo.foo.foo.foo.bar.IncrementCountersWithLWTransaction</mainClass>
+              <mainClass>foo.bar.IncrementCountersWithLWTransaction</mainClass>
               <classpathPrefix>dependency-jars/</classpathPrefix>
             </manifest>
           </archive>

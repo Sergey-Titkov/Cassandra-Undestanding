@@ -13,3 +13,4 @@ hs_err_pid*
 .idea/
 Изучение Cassandra.iml
 *.iml
+CheckClaster/target/
