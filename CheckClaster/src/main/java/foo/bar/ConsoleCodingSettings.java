@@ -14,13 +14,15 @@ import java.io.UnsupportedEncodingException;
 public class ConsoleCodingSettings {
   /**
    * Конструктор устанавливает кодировку консоли, других дополнительных действий не нужно.
-   * Значение читается из системной переменной java, ее можно установить например добави ключ -DconsoleEncoding=<кодировка>
+   * Значение читается из системной переменной java, ее можно установить например добавив ключ -DconsoleEncoding=<кодировка>
    * в параметры запуска java.
    * По умолчанию кодировка консоли у нас 866
-   * @throws java.io.UnsupportedEncodingException Если не угадали с кодировкой.
+   *
+   * @throws java.io.UnsupportedEncodingException
+   *          Если не угадали с кодировкой.
    */
   public ConsoleCodingSettings() throws UnsupportedEncodingException {
-    // Значение читается из системной переменной java, ее можно установить например добави ключ -DconsoleEncoding=<кодировка>
+    // Значение читается из системной переменной java, ее можно установить например добавив ключ -DconsoleEncoding=<кодировка>
     // в параметры запуска java.
     // По умолчанию кодировка консоли у нас 866
     String consoleEncoding = System.getProperty("consoleEncoding");

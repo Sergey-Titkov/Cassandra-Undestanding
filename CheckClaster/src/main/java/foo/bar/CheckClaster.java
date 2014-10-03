@@ -31,7 +31,7 @@ public class CheckClaster {
     "alter KEYSPACE " + CLASTER_NAME + " " +
       "WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : %d };";
 
-  // Всегда создаем новую таблицу.
+  // При необходимости создаем таблицу.
   private static final String create_table =
     "create table if not exists " + CLASTER_NAME + "." + TABLE_NAME + "(\n" +
       "  main_id bigint,\n" +
@@ -74,7 +74,7 @@ public class CheckClaster {
     // Создаем по необходимости таблицу
     session.execute(create_table);
 
-    // Формируем случайный ключ строки.
+    // Формируем случайный строковый ключ.
     Long mainID = Long.valueOf(new Random().nextInt(1000000));
 
     int numberThread = commandLineParameters.numberOfThread < 0 || commandLineParameters.numberOfThread > 128 ? 10 : commandLineParameters.numberOfThread;
@@ -106,13 +106,6 @@ public class CheckClaster {
     // Ждем когда все писатели отработают.
     try {
       countDownLatchWriter.await();
-      countDownLatchReader.await();
-    } catch (InterruptedException e) {
-      System.err.println("Ошибка при ожидании завершения нитей: " + e.getMessage());
-    }
-
-    // Ждем когда закончится контрольное чтение.
-    try {
       countDownLatchReader.await();
     } catch (InterruptedException e) {
       System.err.println("Ошибка при ожидании завершения нитей: " + e.getMessage());
@@ -164,7 +157,8 @@ public class CheckClaster {
       totalWriteRowPerSecond += Math.round(((float) item.getNumberOfInsert() / item.getDuration()) * 1000);
       totalWriteNumberOfTimeoutException += item.getNumberOfWriteTimeoutException();
       totalWriteNumberOfErrorValue += item.getNumberOfErrorWriteValue();
-      totalWriteNumberOfTimeoutPerSecond += Math.round(((float) item.getNumberOfWriteTimeoutException() / item.getDuration()) * 1000);
+      totalWriteNumberOfTimeoutPerSecond += Math
+        .round(((float) item.getNumberOfWriteTimeoutException() / item.getDuration()) * 1000);
     }
     System.out.println(line);
     System.out.println(
@@ -251,7 +245,7 @@ public class CheckClaster {
       listProcessReadValue.get(i).start();
     }
 
-    // Ждем когда все писатели отработают.
+    // Ждем когда закончится контрольное чтение.
     try {
       countDownLatchReader.await();
     } catch (InterruptedException e) {
@@ -290,11 +284,11 @@ public class CheckClaster {
     }
     System.out.println(line);
     System.out.println();
-    System.out.println( String.format("Скорость записи: %s значений в сек.", totalWriteRowPerSecond));
-    System.out.println( String.format("Таймаутов при записи в секунду: %s", totalWriteNumberOfTimeoutPerSecond));
+    System.out.println(String.format("Скорость записи: %s значений в сек.", totalWriteRowPerSecond));
+    System.out.println(String.format("Таймаутов при записи в секунду: %s", totalWriteNumberOfTimeoutPerSecond));
     System.out.println();
-    System.out.println( String.format("Скорость чтения: %s значений в сек", totalReadRowPerSecond));
-    System.out.println( String.format("Таймаутов при чтении в секунду: %s", totalReadNumberOfTimeoutPerSecond));
+    System.out.println(String.format("Скорость чтения: %s значений в сек", totalReadRowPerSecond));
+    System.out.println(String.format("Таймаутов при чтении в секунду: %s", totalReadNumberOfTimeoutPerSecond));
 
     client.close();
 

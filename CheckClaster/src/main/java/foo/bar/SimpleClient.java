@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Самый простой вариант подключеня к кластеру.
+ * Самый простой вариант подключеня к кластеру кассандры.
  *
  * @author Sergey.Titkov
  * @version 001.00

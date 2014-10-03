@@ -21,12 +21,12 @@ public class CommandLineParameters {
   public Integer numberOfThread = 10;
 
   @Parameter(names = {"--time"},
-             description = "Сколько времени обновлять клиента, в секундах. MAX 86400")
+             description = "Сколько времени записывать/читать данные, в секундах. MAX 86400")
   public Integer time = 5;
 
 
   @Parameter(names = {"-?", "-h", "--help"}, description = "Справка о программе"
-  ,help=true)
+    , help = true)
   public boolean help = false;
 
 
