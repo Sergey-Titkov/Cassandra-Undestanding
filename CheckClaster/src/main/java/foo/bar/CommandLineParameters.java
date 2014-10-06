@@ -17,7 +17,7 @@ public class CommandLineParameters {
   public String host = "127.0.0.1";
 
   @Parameter(names = {"--numberOfThread"},
-             description = "Колличетсво нитей чтения/записи. MAX 128")
+             description = "Количество нитей чтения/записи. MAX 128")
   public Integer numberOfThread = 10;
 
   @Parameter(names = {"--time"},
