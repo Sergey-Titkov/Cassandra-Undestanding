@@ -1,5 +1,6 @@
 package foo.bar;
 
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +96,7 @@ public class UpdateCounterWithLWTransaction {
         // Как то так!
         while (!row.getBool("[applied]")) {
           boundStatement = new BoundStatement(updatePreparedStatement);
+          boundStatement.setConsistencyLevel(ConsistencyLevel.ALL);
           results = session.execute(
             boundStatement.bind(
               vol_01.add(row.getDecimal("vol_01")),
